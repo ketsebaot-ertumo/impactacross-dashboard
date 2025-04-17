@@ -1,11 +1,9 @@
 import * as React from "react";
 import { cn } from "@/app/lib/utils";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
-// export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-//   variant?: 'default' | 'outlined';
-// }
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: 'default' | 'outlined';
+}
 
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
