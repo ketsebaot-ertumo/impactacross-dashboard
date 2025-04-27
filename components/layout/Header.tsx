@@ -53,7 +53,7 @@ export default function Header() {
           <Bell className="w-5 h-5 text-zinc-600 dark:text-zinc-300" />
         </Button> */}
 
-        <div className="relative hidden md:flex text-black dark:text-white justify-center space-x-4">
+        <div className="relative hidden md:flex text-blackr dark:text-white justify-center space-x-4">
 
           <Button size="icon" variant="ghost">
             <Bell className="w-5 h-5 text-black dark:text-zinc-300" />
