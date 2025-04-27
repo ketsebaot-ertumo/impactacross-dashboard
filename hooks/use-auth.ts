@@ -6,22 +6,26 @@ import { loginUser, logoutUser } from '@/app/api/routes';
 import { useToast } from './use-toast';
 
 export const useAuth = () => {
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [succ, setSucc] = useState(false);
+  const [err, setErr] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const { success, error } = useToast();
+  
 
   const login = async (credentials: { email: string; password: string }) => {
     setLoginLoading(true);
     try {
       const data = await loginUser(credentials);
-      setUser(data?.user);
-      console.log(data,"\n\n")
+      setToken(data?.data?.token);
+      setSucc(data?.success);
       success("Logged in successfully");
-      return data;
+      return data.data;
     } catch (err: any) {
       console.error("Login failed:", err);
       error("Login failed");
+      setErr(err.message);
       return null;
     } finally {
       setLoginLoading(false);
@@ -32,7 +36,7 @@ export const useAuth = () => {
     setLogoutLoading(true);
     try {
       await logoutUser();
-      setUser(null);
+      setToken(null);
       success("Logged out successfully");
     } catch (err) {
       console.error("Logout failed:", err);
@@ -43,13 +47,15 @@ export const useAuth = () => {
   };
 
   return {
-    user,
+    token,
     login,
     logout,
     loginLoading,
     logoutLoading,
     success,
-    error
+    error,
+    succ,
+    err,
   };
 };
 

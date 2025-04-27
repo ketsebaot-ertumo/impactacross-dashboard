@@ -1,3 +1,31 @@
+// import { useRouter } from 'next/router';
+// import { useSingleEntity } from '@/hooks/use-query';
+// import EntityForm from '@/shared/EntityForm';
+
+// const EditEntityPage = () => {
+//   const router = useRouter();
+//   const { entity, id } = router.query;
+
+//   if (!entity || !id) return <div>Loading...</div>;
+
+//   const { data, loading } = useSingleEntity(entity as string, id as string);
+
+//   if (loading) return <div>Loading...</div>;
+
+//   return (
+//     <div>
+//       <h1>Edit {entity}</h1>
+//       <EntityForm entity={entity as string} initialValues={data} id={id as string} onClose={() => router.push(`/dashboard/${entity}`)} />
+//     </div>
+//   );
+// };
+
+// export default EditEntityPage;
+
+
+
+
+
 // // app/dashboard/[entity]/[id]/edit.tsx
 // 'use client';
 

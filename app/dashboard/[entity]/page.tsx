@@ -1,3 +1,31 @@
+// /app/dashboard/page.tsx
+
+"use client";
+
+import { Loader } from '@/components/layout/Loader';
+import EntityTable from '@/components/shared/EntityTable';
+import { useParams } from 'next/navigation';
+
+const EntityPage = () => {
+  const params = useParams();
+  const entity = params?.entity as string;
+
+    if (!entity) return <div><Loader/></div>;
+
+  return (
+    <div>
+      {/* <h1>{entity}</h1> */}
+      <EntityTable entity={entity} />
+    </div>
+  );
+};
+
+export default EntityPage;
+
+
+
+
+
 // // /app/[entity]/page.tsx
 // // import { EntityTable } from "@/app/components/shared/EntityTable";
 // import { EntityTable } from "@/app/components/shared/EntityTable";

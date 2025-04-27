@@ -2,7 +2,7 @@
 
 "use client";
 
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff } from "lucide-react";
@@ -13,19 +13,22 @@ import { Loader } from "@/components/layout/Loader";
 const LoginPage: FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
+  const [Err, setErr] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loginLoading, success, error, user} = useAuth();
+  const { login, loginLoading, success, error, succ, token, err} = useAuth();
   const router = useRouter();
+ 
+  
+  if (succ && token) {
+    success("Successfully Login.")
+    router.push("/dashboard");
+  }
 
   const handleSubmit = async (e: any) => {
     try{
       e.preventDefault();
       await login({ email, password });
-      success("Successfull Login.")
-      // if(data?.success)
-      router.push("/dashboard");
-      // } else setErr(data?.message)
+      // success("Successfull Login.")
     } catch(err: any){
       error("Unable to Login.");
       setErr(err.message)
@@ -43,7 +46,11 @@ const LoginPage: FC = () => {
 
         <h2 className="text-4xl font-bold text-center text-[#1F75BB] my-2">Login</h2>
         <p className="text-center text-gray-600 mb-6">Please sign in to your account</p>
-        <p>{err ? "Unable to Login." : ""}</p>
+        {(err || Err) && (
+          <p className="text-center text-red-600 text-sm mb-4">
+            Unable to login. Please check your credentials.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

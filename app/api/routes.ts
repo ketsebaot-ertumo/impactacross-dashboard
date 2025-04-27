@@ -20,7 +20,6 @@ export const logoutUser = async () => {
 };
 
 
-
 // Generic function to get a single entity by ID
 export const getEntity = async (entity: string, id: string) => {
   const { data } = await API.get(`/${entity}/${id}`);
@@ -28,10 +27,22 @@ export const getEntity = async (entity: string, id: string) => {
 };
 
 // Generic function to get all entities of a type
-export const getAllEntities = async (entity: string) => {
-  const { data } = await API.get(`/${entity}`);
+// export const getAllEntities = async (entity: string) => {
+// export const getAllEntities = async (entity: string, { page = 1, limit = 10 }: { page?: number; limit?: number } ) => {
+//   const { data } = await API.get(`/${entity}?limit=${limit}&page=${page}`);
+//   return data;
+// };
+
+export const getAllEntities = async (
+  entity: string,
+  options?: { page?: number; limit?: number }
+) => {
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 10;
+  const { data } = await API.get(`/${entity}?limit=${limit}&page=${page}`);
   return data;
 };
+
 
 // Generic function to create a new entity
 export const createEntity = async (entity: string, values: any) => {

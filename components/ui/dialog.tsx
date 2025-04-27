@@ -121,6 +121,29 @@ function DialogDescription({
   )
 }
 
+
+// Dialog Action Component (Custom button)
+function DialogAction({
+  onClick,
+  children,
+  className,
+  ...props
+}: React.ComponentProps<"button"> & { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "bg-primary text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary hover:bg-primary/80",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+
 export {
   Dialog,
   DialogClose,
@@ -132,4 +155,5 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  DialogAction, // Exporting the new DialogAction component
 }
