@@ -37,8 +37,8 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
   const [mode, setMode] = useState<'edit' | 'remove' | 'create' | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(2);
-  const [pageSize, setPageSize] = useState<number>(2);
-  const [total, setTotal] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(5);
+  const [total, setTotal] = useState<number>(5);
   const response = useAllEntities(entity, { page: currentPage, limit: pageSize });
 
   useEffect(() => {
@@ -145,12 +145,12 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
   if (!data) return <div>Oops, {entity} Not found!</div>;
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 shadow-xl rounded-2xl w-200 lg:w-full mt-6">
-      <h2 className="text-2xl md:text-4xl font-semibold text-gray-800 dark:text-white capitalize mb-4">{entity} List</h2>
+    <div className="p-4 md:p-6 bg-white dark:bg-gray-900 shadow-xl rounded-2xl mt-6 w-[calc(100vw-50px)] md:w-[calc(100vw-280px)] lg:w-[calc(100vw-312px)]">
+      <h2 className="text-xl md:text-4xl font-semibold text-gray-800 dark:text-white capitalize mb-4">{entity} List</h2>
 
-      <div className="space-y-4">
+      <div className="space-y-4 w-full">
         {/* Top actions: Print and Export */}
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 w-full">
           <Button size="sm" variant="outline" onClick={() => window.print()}>
             Print
           </Button>
@@ -158,12 +158,12 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
             Export
           </Button>
           <Button className="bg-blue-500 hover:bg-blue-400 text-white hover:text-white" size="sm" variant="outline" onClick={() => handleCreate()}>
-            + New {entity}
+            + New
           </Button>
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="overflow-x-auto border rounded-md">
           <Table className="min-w-full">
             <TableHeader>
               <TableRow>
@@ -182,7 +182,8 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
                       {column.render ? (
                         column.render(row)
                       ) : (
-                        <span title={row[column.key]}>
+                        <span title={String(row[column.key])}>
+                        {/* <span title={row[column.key] != null ? String(row[column.key]) : ''}> */}
                           {String(row[column.key])?.length > 20
                             ? `${String(row[column.key]).slice(0, 10)}..`
                             : String(row[column.key])}
@@ -228,7 +229,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             <label htmlFor="pageSize" className="text-sm text-gray-700 font-medium">
               Posts per page:
             </label>

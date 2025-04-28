@@ -21,7 +21,7 @@ import { ArrowUpRight, Users, Newspaper, FileText } from "lucide-react";
           {dashboardCards.map((card, index) => {
             const Icon = card.icon;
             return (
-              <Card key={index} className="shadow-md">
+              <Card key={index} className="shadow-md max-w-100">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     {card.title}

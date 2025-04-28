@@ -15,7 +15,7 @@ import { Menu as MenuIcon } from "lucide-react";
 export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchValue, setSearchValue]= useState("");
-  const [name, setName]= useState("Welcome Filmon");
+  const [name, setName]= useState("Dashboard");
   const pathname = usePathname();
   
   useEffect(() => {
@@ -34,40 +34,39 @@ export default function Header() {
 
   const handleToggle = useCallback(() => {
     setIsDropdownOpen((prev) => !prev);
+    // setIsDropdownOpen(!isDropdownOpen);
   }, []);
 
 
   return (
     <header className="flex items-center justify-between h-26 px-6 lg:px-8 bg-white border border-zinc-200 dark:bg-zinc-800 dark:border-zinc-800 sticky top-0 z-50">
-      <div className="flex gap-8">
-        <div className="lg:hidden">
-          <MenuIcon/>
+        <div className="flex items-center gap-4">
+          <button
+            className="p-2 rounded bg-white dark:bg-zinc-800 shadow md:hidden" // Fixed at top-left for mobile
+          >
+            <MenuIcon className="w-6 h-6 text-black dark:text-white" />
+          </button>
+          <div className="text-xl md:text-2xl font-medium tracking-tight text-[#2a3048] dark:text-white">
+            {name}
+          </div>
         </div>
+       
 
-        <div className="md:text-2xl font-medium tracking-tight text-[#2a3048] dark:text-white">
-          {name}
-        </div>
-      </div>
+        <div className="relative flex items-center text-blackr dark:text-white justify-center space-x-4">
 
-        {/* <Button size="icon" variant="ghost">
-          <Bell className="w-5 h-5 text-zinc-600 dark:text-zinc-300" />
-        </Button> */}
-
-        <div className="relative hidden md:flex text-blackr dark:text-white justify-center space-x-4">
-
-          <Button size="icon" variant="ghost">
+          {/* <Button size="icon" variant="ghost">
             <Bell className="w-5 h-5 text-black dark:text-zinc-300" />
-          </Button>
+          </Button> */}
 
           <div
-            className="flex items-center cursor-pointer"
+            className="flex items-center cursor-pointer text-black text-lg"
             onClick={handleToggle}
           >
             <span>My Account</span>
             {isDropdownOpen ? (
-              <ChevronUp className="text-sm py-1 flex items-bottom" />
+              <ChevronUp className="py-1 flex items-bottom" />
             ) : (
-              <ChevronDown className="text-sm py-1 flex items-bottom" />
+              <ChevronDown className="py-1 flex items-bottom" />
             )}
           </div>
 
