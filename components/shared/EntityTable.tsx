@@ -145,7 +145,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
   if (!data) return <div>Oops, {entity} Not found!</div>;
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 shadow-xl rounded-2xl ">
+    <div className="p-6 bg-white dark:bg-gray-900 shadow-xl rounded-2xl w-200 lg:w-full mt-6">
       <h2 className="text-2xl md:text-4xl font-semibold text-gray-800 dark:text-white capitalize mb-4">{entity} List</h2>
 
       <div className="space-y-4">
@@ -163,7 +163,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border rounded-lg">
           <Table className="min-w-full">
             <TableHeader>
               <TableRow>
