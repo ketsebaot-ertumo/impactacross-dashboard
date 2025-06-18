@@ -6,53 +6,62 @@ import { createEntity, deleteEntity, getAllEntities, getEntity, updateEntity } f
 import { useToast } from "./use-toast";
 import API from "@/app/api/api";
 
-
 export const useQuery = <T>(fetcher: () => Promise<T>) => {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
   const { success, error } = useToast();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetcher();
-        setData(res);
-        // success("Data loaded!");
-      } catch (err) {
-        error("Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetcher();
+      setData(res);
+    } catch (err: any) {
+      setErr(err.message || "Unknown error");
+    } finally {
+      setLoading(false);
+    }
   }, [fetcher]);
 
-  return { data, error, loading };
-};
+    useEffect(() => {
+      fetchData();
+    }, [fetchData]);
+
+    return { data, err, loading, error, success, refetch: fetchData };
+  };
 
 
-
-// Fetch all entities
-export const useAllEntities = (
-  entity: string,
-  { page = 1, limit = 10 }: { page?: number; limit?: number }
-) => {
-  const fetchAllEntities = useCallback(
-    async () => await getAllEntities(entity, { page, limit }),
-    // async () => await API.get(`/${entity}?limit=${limit}&page=${page}`),
-    [entity, page, limit]
-  );
-
-  return useQuery(fetchAllEntities);
-};
+  export const useAllEntities = (
+    entity: string,
+    options?: { page?: number; limit?: number }
+  ) => {
+    try{
+      const page = options?.page ?? 1;
+      const limit = options?.limit ?? 10;
+    
+      const fetchAllEntities = useCallback(
+        async () => await getAllEntities(entity, { page, limit }),
+        [entity, page, limit]
+      );
+    
+      return useQuery(fetchAllEntities);
+    } catch (err: any) {
+      console.error(`Error fetching all ${entity}s:`, err);
+      return err.message;
+    }
+  };
 
 
 // Fetch single entity
 export const useSingleEntity = (entity: string, id: string) => {
-  // Memoize fetchEntity function to avoid re-triggering on every re-render
-  const fetchEntity = useCallback(async () => await getEntity(entity, id), [entity, id]);
-  return useQuery(fetchEntity);
+  try{
+    const fetchEntity = useCallback(async () => await getEntity(entity, id), [entity, id]);
+    return useQuery(fetchEntity);
+  } catch (err: any) {
+    console.error(`Error fetching single ${entity}:`, err);
+    return err.message;
+  }
 };
 
 
@@ -62,23 +71,35 @@ export const useEntityActions = (entity: string) => {
 
   return {
     create: async (values: any) => {
+      try{
         const res = await createEntity(entity, values);
-        success("Created successfully" );
         return res;
+      } catch (err: any) {
+        console.error(`Error creating ${entity}:`, err);
+        return err.message;
+      }
     },
 
     // delete
     update: async (id: string, values: any) => {
+      try{
         const res = await updateEntity(entity, id, values);
-        success("Updated successfully");
         return res;
+      } catch (err: any) {
+        console.error(`Error updating ${entity}:`, err);
+        return err.message;
+      }
     },
 
     // remove
     remove: async (id: string) => {
+      try{
         const res = await deleteEntity(entity, id);
-        success("Deleted successfully");
         return res;
+      } catch (err: any) {
+        console.error(`Error deleting ${entity}:`, err);
+        return err.message;
+      }
     },
   };
 };

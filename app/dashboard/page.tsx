@@ -41,7 +41,7 @@ import { ArrowUpRight, Users, Newspaper, FileText } from "lucide-react";
           })}
         </div>
 
-        <EntityTable entity="user"/>
+        <EntityTable entity="users"/>
       </>
     );
 }

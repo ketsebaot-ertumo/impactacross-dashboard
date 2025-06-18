@@ -8,13 +8,12 @@ import { useParams } from 'next/navigation';
 
 const EntityPage = () => {
   const params = useParams();
-  const entity = params?.entity as string;
+  let entity = params?.entity as string;
 
-    if (!entity) return <div><Loader/></div>;
+  if (!entity) return <div><Loader/></div>;
 
   return (
     <div>
-      {/* <h1>{entity}</h1> */}
       <EntityTable entity={entity} />
     </div>
   );

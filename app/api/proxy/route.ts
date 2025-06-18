@@ -37,8 +37,8 @@ export async function GET(request: Request) {
     });
 
     const setCookie = response.headers['set-cookie'];
-
     const nextRes = NextResponse.json(response.data);
+
     if (setCookie) {
       nextRes.headers.set('Set-Cookie', setCookie.toString());
     }
@@ -47,59 +47,13 @@ export async function GET(request: Request) {
   } catch (err: unknown) {
     const error = err as AxiosError;
     return NextResponse.json(
-      { error: error.message },
+      error.response ? error.response.data : error.message,
       { status: error.response ? error.response.status : 500 }
     );
   }
 }
 
-// export async function GET(request: Request) {
-//   const { searchParams } = new URL(request.url);
-//   const path = searchParams.get('path');
-//   const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-//   if (!path) {
-//     return NextResponse.json({ error: 'Missing path query param' }, { status: 400 });
-//   }
-//   if (!API_URL) {
-//     return NextResponse.json({ error: 'Invalid api-url on environment.' }, { status: 400 });
-//   }
-
-//   const apiUrl = `${API_URL}${path}`;
-
-//   try {
-//      const cookie = request.headers.get('cookie') || '';
-//     //  const body = await request.json();
-
-//     const response = await axios.get(apiUrl, {
-//        headers: {
-//          'Cookie': cookie, // ✅ Forward the token cookie to backend
-//          // withCredentials: true
-//        },
-//        withCredentials: true,
-//     });
-
-//     // console.log("\n\nresponse get:", response.headers)
-//     const setCookie = response.headers['set-cookie'];
-
-//     // Build the NextResponse and attach the cookies
-//     const nextRes = NextResponse.json(response.data);
-//     if (setCookie) {
-//       nextRes.headers.set('Set-Cookie', setCookie.toString()); // <-- Set cookie to browser
-//     }
-
-//     return nextRes; 
-//     // return NextResponse.json(response.data);
-//   } catch (err: unknown) {
-//     const error = err as AxiosError;
-//     return NextResponse.json(
-//       { error: error.message },
-//       { status: error.response ? error.response.status : 500 }
-//     );
-//   }
-// }
-
-// post request
+// POST request
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const path = searchParams.get('path');
@@ -127,18 +81,43 @@ export async function POST(request: Request) {
 
     // Get set-cookie header from backend
     const setCookie = response.headers['set-cookie'];
+    const { token, user } = response.data;
 
     // Build the NextResponse and attach the cookies
     const nextRes = NextResponse.json(response.data);
-    if (setCookie) {
-      nextRes.headers.set('Set-Cookie', setCookie.toString()); // <-- Set cookie to browser
+    // if (setCookie) {
+    //   nextRes.headers.set('Set-Cookie', setCookie.toString());
+    // } 
+     
+    if (token) {
+        nextRes.cookies.set('token', response.data.token, {
+          httpOnly: true,
+          path: '/',
+          sameSite: 'strict',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 6 * 60 * 60 * 1000,
+        });
+    }
+
+    if (user) {
+      const { password, confirmation_code, resetCode, ...safeUser } = user;
+      nextRes.cookies.set('user', JSON.stringify(safeUser), {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 6 * 60 * 60 * 1000,
+      });
     }
 
     return nextRes;    
     // return NextResponse.json(response.data);
-  } catch (error: unknown) {
-    const err = error as AxiosError;
-    return NextResponse.json({ error: err.message }, { status: err.response?.status || 500 });
+  } catch (err: unknown) {
+    const error = err as AxiosError;
+    return NextResponse.json(
+      error.response ? error.response.data : error.message,
+      { status: error.response ? error.response.status : 500 }
+    );
   }
 }
 
@@ -175,9 +154,12 @@ export async function PUT(request: Request) {
     }
 
     return nextRes;    
-  } catch (error: unknown) {
-    const err = error as AxiosError;
-    return NextResponse.json({ error: err.message }, { status: err.response?.status || 500 });
+  } catch (err: unknown) {
+    const error = err as AxiosError;
+    return NextResponse.json(
+      { error: error.response ? error.response.data : error.message },
+      { status: error.response ? error.response.status : 500 }
+    );
   }
 }
 
@@ -212,8 +194,11 @@ export async function DELETE(request: Request) {
     }
 
     return nextRes;    
-  } catch (error: unknown) {
-    const err = error as AxiosError;
-    return NextResponse.json({ error: err.message }, { status: err.response?.status || 500 });
+  } catch (err: unknown) {
+    const error = err as AxiosError;
+    return NextResponse.json(
+      { error: error.response ? error.response.data : error.message },
+      { status: error.response ? error.response.status : 500 }
+    );
   }
 }

@@ -1,10 +1,25 @@
 // /components/shared/entityFormDialog.tsx
-
+"use client";
 
 import { useEntityActions } from '@/hooks/use-query';
 import { useEffect, useState } from 'react';
-import { Dialog, DialogAction, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { useSingleEntity } from '@/hooks/use-query';  // Import useSingleEntity hook
+import {
+  Dialog,
+  DialogAction,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { useSingleEntity } from '@/hooks/use-query';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import NestedEntityDialog from './NestedEntityDialog';
+import { uploadImageToCloudinary } from '@/utils/cloudinary';
+import { UserResponse } from '@/types';
+import { Owner } from '@/types/owner';
+import { Section } from '@/types/section';
 
 interface EntityFormDialogProps {
   open: boolean;
@@ -12,60 +27,137 @@ interface EntityFormDialogProps {
   entity: string;
   initialValues?: any;
   id?: string;
-  mode?: 'create' | 'edit' | 'remove' | null; // Define mode types
+  mode?: 'create' | 'edit' | 'remove' | null;
+  data?: {
+    users: UserResponse[];
+    owners: Owner[];
+    sections: Section[];
+  };
+  columns: { key: string; label: string | boolean | number }[];
+  refetch?: () => void;
 }
 
-const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: EntityFormDialogProps) => {
+const EntityFormDialog = ({
+  open,
+  onClose,
+  entity,
+  initialValues,
+  id,
+  mode,
+  data,
+  columns,
+  refetch,
+}: EntityFormDialogProps) => {
   const [values, setValues] = useState(initialValues || {});
   const [isOpen, setIsOpen] = useState(open);
   const { create, update, remove } = useEntityActions(entity);
+  const { data: entityDetail } = useSingleEntity(entity, id || '');
+  const { success, error } = useToast();
+  const [showLessonDialog, setShowLessonDialog] = useState(false);
 
-  // Fetch single entity for edit mode if id is provided
-  const { data, loading, error } = useSingleEntity(entity, id || '');
-  console.log("\n\n\nentity data:", data);
+  const uploadFields = ['image_url', 'imageURL', 'logo_url', 'fileURL', 'mediaURL'];
+  const numberFields = ['durationHours', 'fileSize', 'lat', 'lng'];
+  const booleanFields = ['certification'];
 
   useEffect(() => {
-    if (mode === 'edit' && data) {
-      setValues(data.data); // Set data if in edit mode
-    } else if (mode === 'create') {
-      const emptyValues: Record<string, string> = {};
-      if (initialValues) {
-        Object.keys(initialValues).forEach((key) => {
-          emptyValues[key] = '';
-        });
-      }
+    if (mode === 'create') {
+      const emptyValues: Record<string, string | boolean> = {};
+      columns.forEach((column) => {
+        emptyValues[column.key] = '';
+      });
       setValues(emptyValues);
     }
-  }, [data, mode, initialValues]);
+  }, [entityDetail?.data, mode, initialValues]);
 
-  useEffect(() => {
-    setIsOpen(open);
-  }, [open]);
+  useEffect(() => setIsOpen(open), [open]);
+  useEffect(() => { if (!isOpen) onClose(); }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) onClose();
-  }, [isOpen]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setValues({
       ...values,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleSubmit = async () => {
-    if (mode === 'edit' && id) {
-      await update(id, values); // Update record in edit mode
-    } else if (mode === 'remove' && id) {
-      await remove(id); // Remove record in delete mode
-    } else {
-      await create(values); // Create a new record in create mode
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const url = await uploadImageToCloudinary(file);
+      setValues((prev: any) => ({
+        ...prev,
+        [key]: url,
+      }));
+    } catch (err) {
+      console.error("Cloudinary upload error:", err);
+      error("File upload failed.");
     }
-    onClose(); // Close dialog after action
   };
 
-  const isReadonly = mode === 'remove'; // Make fields readonly for deletion mode
-  const isCreateMode = mode === 'create'; // Identify if it's in create mode
+  const handleSubmit = async () => {
+    const transformedValues = Object.fromEntries(
+      Object.entries(values).map(([key, value]) => {
+        if (numberFields.includes(key) && value !== '') {
+          return [key, Number(value)];
+        } else if (booleanFields.includes(key) && value !== '') {
+          return [key, value === 'true'];
+        }
+        return [key, value];
+      })
+    );
+
+    try {
+      let response;
+      if (mode === 'edit' && id) {
+        response = await update(id, transformedValues);
+      } else if (mode === 'remove' && id) {
+        response = await remove(id);
+      } else {
+        response = await create(transformedValues);
+      }
+      
+      if(response?.data?.message){
+        success(response?.data?.message || `${entity} ${mode}ed successfully.`);
+      } else{
+        error(`Unable to ${mode} ${entity}.`)
+      }
+      
+      refetch?.();
+      onClose?.();
+    } catch (err: any) {
+      console.error("Error during submission:", err);
+      error("An error occurred while processing your request.");
+    }
+  };
+
+  const isReadonly = mode === 'remove';
+
+  const statusOptions = entity === 'trainings' ? ['Draft', 'Completed', 'Archived'] : ['Draft', 'Published', 'Archived'];
+
+  const fieldOptions: Record<string, { label: string; value: string | boolean }[]> = {
+    role: ['admin', 'user'].map(role => ({ label: role, value: role })),
+    is_active: ['active', 'inActive'].map(status => ({ label: status, value: status })),
+    status: statusOptions.map(status => ({ label: status, value: status })),
+    certification: [true, false].map(v => ({ label: v.toString(), value: v.toString() })),
+    mediaType: ["Image", "Video"].map(type => ({ label: type, value: type })),
+    userId: data?.users?.map(user => ({ label: user.firstName + ' ' + user.lastName, value: user.id })) || [],
+    owner_id: data?.owners?.map(owner => ({ label: owner.name, value: owner.id })) || [],
+    section_id: data?.sections?.map(section => ({ label: section.title, value: section.id })) || [],
+    mimeType: [
+      { label: "JPEG Image", value: "image/jpeg" },
+      { label: "PNG Image", value: "image/png" },
+      { label: "GIF Image", value: "image/gif" },
+      { label: "SVG Image", value: "image/svg+xml" },
+      { label: "BMP Image", value: "image/bmp" },
+      { label: "WebP Image", value: "image/webp" },
+      { label: "MP4 Video", value: "video/mp4" },
+      { label: "WebM Video", value: "video/webm" },
+      { label: "OGG Video", value: "video/ogg" },
+      { label: "AVI Video", value: "video/x-msvideo" },
+      { label: "MPEG Video", value: "video/mpeg" },
+    ]
+  };
 
   return (
     <Dialog open={open} onOpenChange={setIsOpen}>
@@ -76,84 +168,96 @@ const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: En
             {mode === 'edit' ? 'Update the entity data.' : mode === 'remove' ? 'Delete the entity data.' : 'Fill the form to add a new record.'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => e.preventDefault()}> {/* Prevent form submission to avoid page reload */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-            {/* {Object.keys(values).map((key) => {
-              // Skip fields like id, userId, createdAt, updatedAt in all modes
-              if (['id', 'userId','name', 'createdAt', 'updatedAt'].includes(key)) return null;
+        <form onSubmit={(e) => e.preventDefault()}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-6 overflow-auto max-h-[60vh]">
+            {Object.keys(values).map((key) => {
+              if (['created_at', 'updated_at', '_id', 'user_id', 'last_login', 'is_active'].includes(key)) return null;
 
               return (
                 <div key={key} className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">{key}</label>
-                  <input
-                    type="text"
-                    name={key}
-                    value={values[key] || ''}  // For Create, set value to empty string
-                    onChange={handleChange}
-                    className={`mt-1 p-2 block w-full border border-gray-300 rounded-md shadow-sm ${isReadonly ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                    placeholder={`Enter ${key}`}
-                    readOnly={isReadonly}  // Make field read-only for deletion mode
-                  />
+                  <label className="block text-sm font-medium text-gray-700 capitalize">{key.replace(/_/g, ' ')}</label>
+
+                  {fieldOptions[key] ? (
+                    <select
+                      id={key}
+                      name={key}
+                      value={values[key]}
+                      onChange={handleChange}
+                      className="form-select w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm"
+                      disabled={isReadonly}
+                    >
+                      <option value="">Select {key.replace(/_/g, ' ')}</option>
+                      {fieldOptions[key].map((option) => (
+                        <option key={String(option.value)} value={String(option.value)}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : key === 'tags' ? (
+                    <div className="col-span-2">
+                      <button
+                        type="button"
+                        className="bg-primary text-white px-4 py-2 rounded-md cursor-pointer"
+                        onClick={() => setShowLessonDialog(true)}
+                      >
+                        {`Add ${key}/s`}
+                      </button>
+                    </div>
+                  ) : uploadFields.includes(key) ? (
+                    <>
+                      {values[key] && (
+                        <img src={values[key]} alt="Preview" className="w-24 h-24 object-cover rounded-md mb-2" />
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id={key}
+                        name={key}
+                        onChange={(e) => handleFileUpload(e, key)}
+                        className="form-input w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                        disabled={isReadonly}
+                      />
+                    </>
+                  ) : (
+                    <input
+                      type={
+                        numberFields.includes(key)
+                          ? 'number'
+                          : key.toLowerCase().includes('date')
+                          ? 'date'
+                          : 'text'
+                      }
+                      id={key}
+                      name={key}
+                      value={values[key]}
+                      onChange={handleChange}
+                      className="form-input w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                      placeholder={`Enter ${key}`}
+                      readOnly={isReadonly}
+                    />
+                  )}
                 </div>
               );
-            })} */}
-            
-            {Object.keys(values).map((key) => {
-  if (['id', 'userId','name', 'createdAt', 'updatedAt'].includes(key)) return null;
+            })}
 
-  const statusOptions =
-    entity === 'blog' || entity === 'publication' || entity === 'multimedia'
-      ? ['Draft', 'Published', 'Archived']
-      : entity === 'training'
-        ? ['Draft', 'Completed', 'Archived']
-        : [];
-
-  return (
-    <div key={key} className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{key}</label>
-
-      {/* Check if the field is 'status' and has options */}
-      {key === 'status' && statusOptions.length > 0 ? (
-        <select
-          name={key}
-          value={values[key] || ''}
-          onChange={(e) =>
-            setValues({
-              ...values,
-              [e.target.name]: e.target.value,
-            })
-          }
-          className={`mt-1 p-2 block w-full border border-gray-300 rounded-md shadow-sm ${
-            mode === 'remove' ? 'bg-gray-200 cursor-not-allowed' : ''
-          }`}
-          disabled={mode === 'remove'}
-        >
-          <option value="" disabled>Select status</option>
-          {statusOptions.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      ) : (
-        // Normal input for all other fields
-        <input
-          type="text"
-          name={key}
-          value={values[key] || ''}
-          onChange={handleChange}
-          className={`mt-1 p-2 block w-full border border-gray-300 rounded-md shadow-sm ${
-            mode === 'remove' ? 'bg-gray-200 cursor-not-allowed' : ''
-          }`}
-          placeholder={`Enter ${key}`}
-          readOnly={mode === 'remove'}
-        />
-      )}
-    </div>
-  );
-})}
-
-
+            {showLessonDialog && (
+              <NestedEntityDialog
+                open={showLessonDialog}
+                onClose={() => setShowLessonDialog(false)}
+                entity={entity}
+                id={id}
+                data={values.Lessons || values.questions || []}
+                dataOptions={entity === 'multimedias' ? [{ label: 'tag', value: 'tag' }] : []}
+                setData={(newValues: any) =>
+                  setValues((prevValues: any) => ({
+                    ...prevValues,
+                    ...(entity === 'multimedias' ? { tags: newValues.map((item: any) => item.tag) } : {}),
+                  }))
+                }
+                name={entity === 'multimedias' ? 'Tags' : ''}
+                refetch={refetch}
+              />
+            )}
           </div>
           <DialogFooter>
             <DialogAction type="button" onClick={() => setIsOpen(false)}>Cancel</DialogAction>
@@ -166,530 +270,3 @@ const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: En
 };
 
 export default EntityFormDialog;
-
-
-
-
-
-
-
-// import { useEntityActions } from '@/hooks/use-query';
-// import { useEffect, useState } from 'react';
-// import { Dialog, DialogAction, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-// import { Button } from '../ui/button';
-// import { useSingleEntity } from '@/hooks/use-query';  // Import useSingleEntity hook
-
-// interface EntityFormDialogProps {
-//   open: boolean;
-//   onClose: () => void;
-//   entity: string;
-//   initialValues?: any;
-//   id?: string;
-//   mode?: 'create' | 'edit' | 'remove' | null; // Define mode types
-// }
-
-// const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: EntityFormDialogProps) => {
-//   const [values, setValues] = useState(initialValues || {});
-//   const [isOpen, setIsOpen] = useState(open);
-//   const { create, update, remove } = useEntityActions(entity);
-
-//   // Fetch single entity for edit mode if id is provided
-//   const { data, loading, error } = useSingleEntity(entity, id || '');
-//   console.log("\n\n\nentity data:", data);
-
-//   useEffect(() => {
-//     if (mode === 'edit' && data) {
-//       setValues(data.data); // Set data if in edit mode
-//     } else if (mode === 'create') {
-//       setValues(initialValues || {}); // Initialize empty values for create mode
-//     }
-//   }, [data, mode, initialValues]);
-
-//   useEffect(() => {
-//     setIsOpen(open);
-//   }, [open]);
-
-//   useEffect(() => {
-//     if (!isOpen) onClose();
-//   }, [isOpen]);
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setValues({
-//       ...values,
-//       [e.target.name]: e.target.value,
-//     });
-//   };
-
-//   const handleSubmit = async () => {
-//     if (mode === 'edit' && id) {
-//       await update(id, values); // Update record in edit mode
-//     } else if (mode === 'remove' && id) {
-//       await remove(id); // Remove record in delete mode
-//     } else {
-//       await create(values); // Create a new record in create mode
-//     }
-//     onClose(); // Close dialog after action
-//   };
-
-//   const isReadonly = mode === 'remove'; // Make fields readonly for deletion mode
-//   const isCreateMode = mode === 'create'; // Identify if it's in create mode
-
-//   return (
-//     <Dialog open={open} onOpenChange={setIsOpen}>
-//       <DialogContent>
-//         <DialogHeader>
-//           <DialogTitle>{mode === 'edit' ? 'Edit Record' : mode === 'remove' ? 'Delete Record' : 'Create Record'}</DialogTitle>
-//           <DialogDescription>
-//             {mode === 'edit' ? 'Update the entity data.' : mode === 'remove' ? 'Delete the entity data.' : 'Fill the form to add a new record.'}
-//           </DialogDescription>
-//         </DialogHeader>
-//         <form onSubmit={(e) => e.preventDefault()}> {/* Prevent form submission to avoid page reload */}
-//           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-//             {Object.keys(values).map((key) => {
-//               // Skip fields that should not be displayed in create mode
-//               if (mode === 'create' && ['id', 'userId', 'createdAt', 'updatedAt'].includes(key)) return null;
-
-//               return (
-//                 <div key={key} className="space-y-2">
-//                   <label className="block text-sm font-medium text-gray-700">{key}</label>
-//                   <input
-//                     type="text"
-//                     name={key}
-//                     value={isCreateMode ? '' : values[key] || ''}  // For Create, set value to empty string
-//                     onChange={handleChange}
-//                     className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm ${isReadonly ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-//                     placeholder={`Enter ${key}`}
-//                     readOnly={isReadonly}  // Make field read-only for deletion mode
-//                   />
-//                 </div>
-//               );
-//             })}
-//           </div>
-//           <DialogFooter>
-//             <DialogAction type="button" onClick={() => setIsOpen(false)}>Cancel</DialogAction>
-//             <DialogAction onClick={handleSubmit}>{mode === 'edit' || mode === 'remove' ? 'Save' : 'Submit'}</DialogAction>
-//           </DialogFooter>
-//         </form>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
-
-// export default EntityFormDialog;
-
-
-
-
-
-
-
-// import { useEntityActions } from '@/hooks/use-query';
-// import { useEffect, useState } from 'react';
-// import { Dialog, DialogAction, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-// import { Button } from '../ui/button';
-// import { useSingleEntity } from '@/hooks/use-query';  // Import useSingleEntity hook
-
-// interface EntityFormDialogProps {
-//   open: boolean;
-//   onClose: () => void;
-//   entity: string;
-//   initialValues?: any;
-//   id?: string;
-//   mode?: 'create' | 'edit' | 'remove' | null; // Define mode types
-// }
-
-// const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: EntityFormDialogProps) => {
-//   const [values, setValues] = useState(initialValues || {});
-//   const [isOpen, setIsOpen] = useState(open);
-//   const { create, update, remove } = useEntityActions(entity);
-
-//   // Fetch single entity for edit mode if id is provided
-//   const { data, loading, error } = useSingleEntity(entity, id || '');
-//   console.log("\n\n\nentity data:", data);
-
-//   useEffect(() => {
-//     if (mode === 'edit' && data) {
-//       setValues(data.data); // Set data if in edit mode
-//     } else if (mode === 'create') {
-//       setValues(initialValues || {}); // Initialize empty values for create mode
-//     }
-//   }, [data, mode, initialValues]);
-
-//   useEffect(() => {
-//     setIsOpen(open);
-//   }, [open]);
-
-//   useEffect(() => {
-//     if (!isOpen) onClose();
-//   }, [isOpen]);
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setValues({
-//       ...values,
-//       [e.target.name]: e.target.value,
-//     });
-//   };
-
-//   const handleSubmit = async () => {
-//     if (mode === 'edit' && id) {
-//       await update(id, values); // Update record in edit mode
-//     } else if (mode === 'remove' && id) {
-//       await remove(id); // Remove record in delete mode
-//     } else {
-//       await create(values); // Create a new record in create mode
-//     }
-//     onClose(); // Close dialog after action
-//   };
-
-//   return (
-//     <Dialog open={open} onOpenChange={setIsOpen}>
-//       <DialogContent>
-//         <DialogHeader>
-//           <DialogTitle>{mode === 'edit' ? 'Edit Record' : mode === 'remove' ? 'Delete Record' : 'Create Record'}</DialogTitle>
-//           <DialogDescription>
-//             {mode === 'edit' ? 'Update the entity data.' : mode === 'remove' ? 'Delete the entity data.' : 'Fill the form to add a new record.'}
-//           </DialogDescription>
-//         </DialogHeader>
-//         <form onSubmit={(e) => e.preventDefault()}> {/* Prevent form submission to avoid page reload */}
-//           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-//             {Object.keys(values).map((key) => {
-//               // Skip fields that should not be displayed (id, userId, createdAt, updatedAt)
-//               if (['id', 'userId', 'createdAt', 'updatedAt'].includes(key)) return null;
-
-//               return (
-//                 <div key={key} className="space-y-2">
-//                   <label className="block text-sm font-medium text-gray-700">{key}</label>
-//                   <input
-//                     type="text"
-//                     name={key}
-//                     value={values[key] || ''}
-//                     onChange={handleChange}
-//                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm"
-//                     placeholder={`Enter ${key}`}
-//                   />
-//                 </div>
-//               );
-//             })}
-//           </div>
-//           <DialogFooter>
-//             <DialogAction type="button" onClick={() => setIsOpen(false)}>Cancel</DialogAction>
-//             <DialogAction onClick={handleSubmit}>{mode === 'edit' || mode === 'remove' ? 'Save' : 'Submit'}</DialogAction>
-//           </DialogFooter>
-//         </form>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
-
-// export default EntityFormDialog;
-
-
-
-
-
-
-
-
-// import { useEntityActions } from '@/hooks/use-query';
-// import { useEffect, useState } from 'react';
-// import { Dialog, DialogAction, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-// import { Button } from '../ui/button';
-// import { useSingleEntity } from '@/hooks/use-query';  // Import useSingleEntity hook
-
-// interface EntityFormDialogProps {
-//   open: boolean;
-//   onClose: () => void;
-//   entity: string;
-//   initialValues?: any;
-//   id?: string;
-//   mode?: 'create' | 'edit' | 'remove' | null; // Define mode types
-// }
-
-// const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: EntityFormDialogProps) => {
-//   const [values, setValues] = useState(initialValues || {});
-//   const [isOpen, setIsOpen] = useState(open);
-//   const { create, update, remove } = useEntityActions(entity);
-
-//   // Fetch single entity for edit mode if id is provided
-//   const { data, loading, error } = useSingleEntity(entity, id || '');
-//   console.log("\n\n\nentity data:", data)
-
-//   useEffect(() => {
-//     if (mode === 'edit' && data) {
-//       // setValues(data.data); // Set data if in edit mode
-//     } else if (mode === 'create') {
-//       setValues(initialValues || {}); // Initialize empty values for create mode
-//     }
-//   }, [data, mode, initialValues]);
-
-//   useEffect(() => {
-//     setIsOpen(open);
-//   }, [open]);
-
-//   useEffect(() => {
-//     if (!isOpen) onClose();
-//   }, [isOpen]);
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setValues({
-//       ...values,
-//       [e.target.name]: e.target.value,
-//     });
-//   };
-
-//   const handleSubmit = async () => {
-//     if (mode === 'edit' && id) {
-//       await update(id, values); // Update record in edit mode
-//     } else if (mode === 'remove' && id) {
-//       await remove(id); // Remove record in delete mode
-//     } else {
-//       await create(values); // Create a new record in create mode
-//     }
-//     onClose(); // Close dialog after action
-//   };
-
-//   return (
-//     <Dialog open={open} onOpenChange={setIsOpen}>
-//       <DialogContent>
-//         <DialogHeader>
-//           <DialogTitle>{mode === 'edit' ? 'Edit Record' : mode === 'remove' ? 'Delete Record' : 'Create Record'}</DialogTitle>
-//           <DialogDescription>
-//             {mode === 'edit' ? 'Update the entity data.' : mode === 'remove' ? 'Delete the entity data.' : 'Fill the form to add a new record.'}
-//           </DialogDescription>
-//         </DialogHeader>
-//         <form onSubmit={(e) => e.preventDefault()}> {/* Prevent form submission to avoid page reload */}
-//           {/* Render dynamic form fields here based on the values (formData) */}
-//           <div className="grid gap-2">
-//             {Object.keys(values).map((key) => (
-//               <div key={key}>
-//                 <label className="block text-sm font-medium text-gray-700">{key}</label>
-//                 <input
-//                   type="text"
-//                   name={key}
-//                   value={values[key] || ''}
-//                   onChange={handleChange}
-//                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm"
-//                   placeholder={`Enter ${key}`}
-//                 />
-//               </div>
-//             ))}
-//           </div>
-//           <DialogFooter>
-//             <DialogAction type="button" onClick={() => setIsOpen(false)}>Cancel</DialogAction>
-//             {/* Trigger handleSubmit via onClick */}
-//             <DialogAction onClick={handleSubmit}>{mode === 'edit' || mode === 'remove' ? 'Save' : 'Submit'}</DialogAction>
-//           </DialogFooter>
-//         </form>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
-
-// export default EntityFormDialog;
-
-
-
-
-
-
-
-
-// import { useEntityActions } from '@/hooks/use-query';
-// import { useEffect, useState } from 'react';
-// import { Dialog, DialogAction, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-// import { Button } from '../ui/button';
-
-// interface EntityFormDialogProps {
-//   open: boolean;
-//   onClose: () => void;
-//   entity: string;
-//   initialValues?: any;
-//   id?: string;
-//   mode?: string | null;
-// }
-
-// const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: EntityFormDialogProps) => {
-//   const [values, setValues] = useState(initialValues || {});
-//   const [isOpen, setIsOpen] = useState(open);
-//   const { create, update, remove } = useEntityActions(entity);
-
-//   // Sync with external `open` prop
-//   useEffect(() => {
-//     setIsOpen(open);
-//   }, [open]);
-
-//   // Close externally
-//   useEffect(() => {
-//     if (!isOpen) onClose();
-//   }, [isOpen]);
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setValues({
-//       ...values,
-//       [e.target.name]: e.target.value,
-//     });
-//   };
-
-//   const handleSubmit = async () => {
-//     // Handle submit without the form event
-//     if (mode === "edit" && id) {
-//       await update(id, values); // Update record if mode is edit
-//     } else if (mode === "remove" && id) {
-//       await remove(id); // Remove record if mode is delete
-//     } else {
-//       await create(values); // Create a new record
-//     }
-//     onClose(); // Close dialog after action
-//   };
-
-//   return (
-//     <Dialog open={open} onOpenChange={setIsOpen}>
-//       <DialogContent>
-//         <DialogHeader>
-//           <DialogTitle>{mode === 'edit' ? 'Edit Record' : mode === 'remove' ? 'Delete Record' : 'Create Record'}</DialogTitle>
-//           <DialogDescription>
-//             {mode === 'edit' ? 'Update the entity data.' : mode === 'remove' ? 'Delete the entity data.' : 'Fill the form to add a new record.'}
-//           </DialogDescription>
-//         </DialogHeader>
-//         <form onSubmit={(e) => e.preventDefault()}> {/* Prevent form submission to avoid page reload */}
-//           {/* Render dynamic form fields here based on the `initialValues` */}
-//           <div className="grid gap-2">
-//             {/* Assuming name is the required field */}
-//             <label htmlFor="name">Entity Name</label>
-//             <input
-//               id="name"
-//               name="name"
-//               type="text"
-//               value={values.name || ''}
-//               onChange={handleChange}
-//               placeholder="Enter entity name"
-//             />
-//           </div>
-//           <DialogFooter>
-//             <DialogAction type="button" onClick={() => setIsOpen(false)}>Cancel</DialogAction>
-//             {/* Trigger handleSubmit via onClick */}
-//             <DialogAction onClick={handleSubmit}>{mode === 'edit' || mode === 'remove' ? 'Save' : 'Submit'}</DialogAction>
-//           </DialogFooter>
-//         </form>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
-
-// export default EntityFormDialog;
-
-
-
-
-
-
-// import { useEntityActions } from '@/hooks/use-query';
-// import { useEffect, useState } from 'react';
-// import { Dialog, DialogAction, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-// import { Button } from '../ui/button';
-
-// interface EntityFormDialogProps {
-//   open: boolean;
-//   onClose: () => void;
-//   entity: string;
-//   initialValues?: any;
-//   id?: string;
-//   mode?: string | null;
-// }
-
-// const EntityFormDialog = ({ open, onClose, entity, initialValues, id, mode }: EntityFormDialogProps) => {
-//   const [values, setValues] = useState(initialValues || {});
-//   const [isOpen, setIsOpen] = useState(open);
-//   const { create, update, remove } = useEntityActions(entity);
-
-//   // Sync with external `open` prop
-//   useEffect(() => {
-//     setIsOpen(open);
-//   }, [open]);
-
-//   // Close externally
-//   useEffect(() => {
-//     if (!isOpen) onClose();
-//   }, [isOpen]);
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setValues({
-//       ...values,
-//       [e.target.name]: e.target.value,
-//     });
-//   };
-
-//   const handleSubmit = async () => {
-//     if (id && mode === "edit") {
-//       await update(id, values);
-//     }else if (id && mode === "remove") {
-//       await remove(id);
-//     } else {
-//       await create(values);
-//     }
-//     onClose();
-//   };
-
-//   return (
-//     <Dialog open={open} onOpenChange={setIsOpen}>
-//       <DialogTrigger>Open Dialog</DialogTrigger>
-//       <DialogContent>
-//         <DialogHeader>
-//           <DialogTitle>{id ? 'Edit Record' : 'Create Record'}</DialogTitle>
-//           <DialogDescription>
-//             {id ? 'Update the entity data.' : 'Fill the form to add a new record.'}
-//           </DialogDescription>
-//         </DialogHeader>
-//         <DialogFooter>
-//           <DialogAction onClick={handleSubmit}>{id ? 'Save' : 'Submit'}</DialogAction>
-//           <DialogAction onClick={() => setIsOpen(false)}>Cancel</DialogAction>
-//         </DialogFooter>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
-
-// export default EntityFormDialog;
-
-
-
-
-
-
-// // components/shared/EntityFormDialog.tsx
-// 'use client';
-
-// import { useState } from 'react';
-// import EntityForm from './EntityForm';
-
-// interface EntityFormDialogProps {
-//   entity: string;
-// }
-
-// export default function EntityFormDialog({ entity }: EntityFormDialogProps) {
-//   const [isOpen, setIsOpen] = useState(false);
-
-//   return (
-//     <>
-//       <button
-//         onClick={() => setIsOpen(true)}
-//         className="px-4 py-2 bg-green-600 text-white rounded-md"
-//       >
-//         Add {entity}
-//       </button>
-//       {isOpen && (
-//         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-//           <div className="bg-white p-6 rounded-md">
-//             <EntityForm entity={entity} />
-//             <button
-//               onClick={() => setIsOpen(false)}
-//               className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-md"
-//             >
-//               Close
-//             </button>
-//           </div>
-//         </div>
-//       )}
-//     </>
-//   );
-// }
