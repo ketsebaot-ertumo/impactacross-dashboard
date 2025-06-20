@@ -36,13 +36,17 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<GenericEntity | null>(null);
   const [mode, setMode] = useState<'edit' | 'remove' | 'create' | null>(null);
-  const { data: response, loading: loading, refetch  } = useAllEntities(entity, { page: 1, limit: 20 });
+  const { data: response, loading: loading, refetch  } = useAllEntities(entity, { page: 1, limit: 5 });
   const [sections, setSections] = useState<Section[]>([]);
   const [owners, setOwners] = useState<Owner[]>([]);
   const [users, setUsers] = useState<UserResponse[]>([]);
   const { data: sectionData, loading: sectionLoading } = useAllEntities("sections");
   const { data: ownerData, loading: ownerLoading } = useAllEntities("owners");
   const { data: userData, loading: userLoading } = useAllEntities("users");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
 
   const columns = Object.keys(defaultFields[entity] || {}).map(key => ({
     key,
@@ -59,14 +63,40 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
       if (ownerData?.data) setOwners(ownerData.data);
       if (sectionData?.data) setSections(sectionData.data);
       if (userData?.data) setUsers(userData.data);
-      if (response?.data) setData(response?.data);
+      // if (response?.data) {
+      //   setData(response?.data);
+      //   setTotalPages(response?.data?.pagination?.totalPages);
+      // }
     } catch (err){
       console.error(err);
       setErr('Failed to load data.');
     }
 
-    }, [userData?.data, sectionData?.data, ownerData?.data, response?.data]);
+  }, [userData?.data, sectionData?.data, ownerData?.data]);
 
+  console.log("total pages:", totalPages);
+
+  useEffect(() => {
+    const loadBlogs = async () => {
+        try {
+          console.log("res data:", response);
+          if (response?.data) {
+            setData(response?.data);
+            setTotalPages(response?.pagination?.totalPages);
+          }
+        } catch (err) {
+          console.error(err);
+          setErr('Failed to load entity data.');
+        } 
+    };
+    loadBlogs();
+  }, [response?.data, currentPage, pageSize, totalPages]);
+
+  const handlePagination = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+        setCurrentPage(page);
+    }
+  };
 
   if(loading) return <Loader/>
   if (err) {
@@ -175,7 +205,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
   ];
 
   return (
-    <div className="overflow-auto p-4 md:p-6 bg-white dark:bg-gray-900 shadow-xl rounded-2xl mt-6 w-[calc(100vw-50px)] md:w-[calc(100vw-280px)] lg:w-[calc(100vw-320px)]">
+    <div className="overflow-auto p-4 md:p-6 md:pb-2 bg-white dark:bg-gray-900 shadow-xl rounded-2xl mt-6 w-[calc(100vw-50px)] md:w-[calc(100vw-280px)] lg:w-[calc(100vw-320px)]">
       <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-white capitalize mb-4">{entity} Data</h2>
 
       <div className="space-y-4 w-full">
@@ -232,6 +262,60 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
           </Table>
         </div>
       </div>
+
+      {/* Pagination & Controls */}
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4  border-t py-8">
+        <div className="flex items-center space-x-2">
+          <button
+              onClick={() => handlePagination(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-md font-medium transition ${
+              currentPage === 1
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-green-800 text-white hover:opacity-80"
+              }`}
+          >
+              Previous
+          </button>
+
+          <span className="text-gray-700 font-medium">
+              Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+              onClick={() => handlePagination(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-2 rounded-md font-medium transition ${
+              currentPage === totalPages
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-green-800 text-white hover:opacity-80"
+              }`}
+          >
+              Next
+          </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+          <label htmlFor="pageSize" className="text-sm text-gray-700 font-medium">
+              Posts per page:
+          </label>
+          <select
+              id="pageSize"
+              value={pageSize}
+              onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+              }}
+                  className="border border-gray-300 rounded px-3 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+              {[5, 10, 25, 50].map((size) => (
+              <option key={size} value={size}>
+                      {size} posts
+              </option>
+              ))}
+          </select>
+      </div>
+  </div>
 
       {dialogOpen && (
         <EntityFormDialog
