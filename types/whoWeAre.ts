@@ -1,4 +1,4 @@
-export interface WhoWeAre {
+export interface AboutUs {
     id: string;
     description1: string;
     description2: string;

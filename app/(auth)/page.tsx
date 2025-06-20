@@ -86,6 +86,12 @@ const LoginPage: FC = () => {
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
+
+            {password && (password.length < 8 || password.length > 100) && (
+              <small className="text-red-500 block mt-1 text-xs">
+                Password must be 8–100 characters long
+              </small>
+            )}
           </div>
 
           <div className="flex justify-between text-xs sm:text-sm">

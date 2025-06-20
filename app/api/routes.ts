@@ -77,7 +77,7 @@ export const createEntity = async (entity: string, values: any) => {
 // Generic function to update an existing entity
 export const updateEntity = async (entity: string, id: string, values: any) => {
   try{
-    const data = await API.put(`/${entity}/${id}`, values); 
+    const data = await API.put(`/${entity}/id/${id}`, values); 
     return data;
   }catch(err: any){
     // console.error(err);

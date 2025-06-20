@@ -111,10 +111,10 @@ export const defaultFields: Record<string, any> = {
     image_url: '',
   },
   partners: {
-    section_id: '',
-    name: '',
-    logo_url: '',
-    link: '',
+    section_id: '...',
+    name: '...',
+    logo_url: "...",
+    link: 'https://...',
   },
   projects: {
     section_id: '',
@@ -123,15 +123,28 @@ export const defaultFields: Record<string, any> = {
     date: '',
     client: '',
   },
-  "what-we-do-images": {
-    section_id: '',
-    title: '',
-    description: '',
-    image_url: '',
-  },
-  "who-we-are-contents": {
+  // "what-we-do-images": {
+  //   section_id: '',
+  //   title: '',
+  //   description: '',
+  //   image_url: '',
+  // },
+  about_us: {
     description1: '',
     description2: '',
-    image_url: '',
+    image_url: 'https://...',
+  },
+  gallery: {
+    title: '...',
+    description: '...',
+    image_url: 'https://...',
+    video_url: 'https://...',
+    // type: '...',
+    // thumbnail_url?: string;
+  },
+  expertise: {
+    title: '...',
+    description: '...',
+    image_url: 'https://...',
   }
 };

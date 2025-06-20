@@ -36,7 +36,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<GenericEntity | null>(null);
   const [mode, setMode] = useState<'edit' | 'remove' | 'create' | null>(null);
-  const { data: response, loading: loading, refetch  } = useAllEntities(entity);
+  const { data: response, loading: loading, refetch  } = useAllEntities(entity, { page: 1, limit: 20 });
   const [sections, setSections] = useState<Section[]>([]);
   const [owners, setOwners] = useState<Owner[]>([]);
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -116,7 +116,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
           </p>
 
           {(entity !== "users" && entity !== "owners") && (
-            <Button className="bg-primary text-white" size="sm" onClick={() => handleCreate()}>
+            <Button className="bg-primary hover:bg-primary hover:opacity-70 text-white cursor-pointer" size="sm" onClick={() => handleCreate()}>
               <Plus/> <span className='mr-2'>Add</span>
             </Button>
           )}
@@ -188,7 +188,7 @@ const EntityTable: React.FC<EntityTableProps> = ({ entity }) => {
             <Download />
           </Button>
           {entity !== "users" &&(
-            <Button className="bg-primary hover:opacity-90 text-white cursor-pointer" size="sm" onClick={() => handleCreate()}>
+            <Button className="bg-primary hover:bg-primary hover:opacity-70 text-white cursor-pointer" size="sm" onClick={() => handleCreate()}>
               <Plus className='mx-2'/>
             </Button>
           )}

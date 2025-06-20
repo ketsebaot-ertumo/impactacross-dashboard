@@ -16,7 +16,7 @@ import { useSingleEntity } from '@/hooks/use-query';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import NestedEntityDialog from './NestedEntityDialog';
-import { uploadImageToCloudinary } from '@/utils/cloudinary';
+import { uploadImageToCloudinary } from '@/utils/gallery';
 import { UserResponse } from '@/types';
 import { Owner } from '@/types/owner';
 import { Section } from '@/types/section';
@@ -55,7 +55,7 @@ const EntityFormDialog = ({
   const { success, error } = useToast();
   const [showLessonDialog, setShowLessonDialog] = useState(false);
 
-  const uploadFields = ['image_url', 'imageURL', 'logo_url', 'fileURL', 'mediaURL'];
+  const uploadFields = ['image_url', 'imageURL', 'logo_url', 'fileURL', 'mediaURL', "video_url"];
   const numberFields = ['durationHours', 'fileSize', 'lat', 'lng'];
   const booleanFields = ['certification'];
 
@@ -83,16 +83,17 @@ const EntityFormDialog = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      const url = await uploadImageToCloudinary(file);
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result as string; // base64 string with data: prefix
       setValues((prev: any) => ({
         ...prev,
-        [key]: url,
+        [key]: base64String,
       }));
-    } catch (err) {
-      console.error("Cloudinary upload error:", err);
-      error("File upload failed.");
-    }
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -102,7 +103,7 @@ const EntityFormDialog = ({
           return [key, Number(value)];
         } else if (booleanFields.includes(key) && value !== '') {
           return [key, value === 'true'];
-        }
+        } 
         return [key, value];
       })
     );
@@ -119,7 +120,9 @@ const EntityFormDialog = ({
       
       if(response?.data?.message){
         success(response?.data?.message || `${entity} ${mode}ed successfully.`);
-      } else{
+      }
+      
+      if(response?.data?.error){ 
         error(`Unable to ${mode} ${entity}.`)
       }
       
@@ -140,7 +143,7 @@ const EntityFormDialog = ({
     is_active: ['active', 'inActive'].map(status => ({ label: status, value: status })),
     status: statusOptions.map(status => ({ label: status, value: status })),
     certification: [true, false].map(v => ({ label: v.toString(), value: v.toString() })),
-    mediaType: ["Image", "Video"].map(type => ({ label: type, value: type })),
+    mediaType: ["Image", "Video", "Document", "Podcast"].map(type => ({ label: type, value: type })),
     userId: data?.users?.map(user => ({ label: user.firstName + ' ' + user.lastName, value: user.id })) || [],
     owner_id: data?.owners?.map(owner => ({ label: owner.name, value: owner.id })) || [],
     section_id: data?.sections?.map(section => ({ label: section.title, value: section.id })) || [],
@@ -214,6 +217,8 @@ const EntityFormDialog = ({
                         id={key}
                         name={key}
                         onChange={(e) => handleFileUpload(e, key)}
+                        // value={values[key]}
+                        // onChange={handleChange}
                         className="form-input w-full p-2 border border-gray-300 rounded-md shadow-sm"
                         disabled={isReadonly}
                       />

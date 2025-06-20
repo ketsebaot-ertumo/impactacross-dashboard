@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Newspaper, FileText, Video, BookOpen, Briefcase, UserCog, Menu as MenuIcon, X as CloseIcon, PersonStanding, Building2, Phone, MapPin, Link2, UsersRound, FolderKanban, Handshake, Info, Layers, LayoutGrid } from "lucide-react";
+import { LayoutDashboard, Users, Newspaper, FileText, Video, BookOpen, Briefcase, UserCog, Menu as MenuIcon, X as CloseIcon, PersonStanding, Building2, Phone, MapPin, Link2, UsersRound, FolderKanban, Handshake, Info, Layers, LayoutGrid, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -24,34 +24,17 @@ const navItems: NavItem[] = [
   { name: "Phones", href: "/dashboard/phones", icon: Phone },
   { name: "Locations", href: "/dashboard/locations", icon: MapPin },
   { name: "Company Links", href: "/dashboard/links", icon: Link2 },
-  { name: "Descriptions", href: "/dashboard/sections", icon: LayoutGrid },
+  { name: "Section Descriptions", href: "/dashboard/sections", icon: LayoutGrid },
   { name: "Team", href: "/dashboard/teams", icon: UsersRound },
   { name: "Services", href: "/dashboard/service", icon: Briefcase },
   { name: "Projects", href: "/dashboard/projects", icon: FolderKanban },
   { name: "Parners", href: "/dashboard/partners", icon: Handshake },
-  { name: "Who we are", href: "/dashboard/who-we-are-contents", icon: Info },
-  { name: "What we do", href: "/dashboard/what-we-do-images", icon: Layers },
+  { name: "About Us", href: "/dashboard/about_us", icon: Info },
+  { name: "Expertise", href: "/dashboard/expertise", icon: Layers },
+  { name: "Gallery", href: "/dashboard/gallery", icon: Image },
+  // { name: "What we do", href: "/dashboard/what-we-do-images", icon: Layers },
 ];
 
-// const navItems: NavItem[] = [
-//   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-//   { name: "Users", href: "/dashboard/users", icon: Users },
-//   { name: "Blogs", href: "/dashboard/blogs", icon: Newspaper },
-//   { name: "Publications", href: "/dashboard/publications", icon: FileText },
-//   { name: "Multimedias", href: "/dashboard/multimedias", icon: Video },
-//   { name: "Trainings", href: "/dashboard/trainings", icon: BookOpen },
-//   { name: "Owner", href: "/dashboard/owners", icon: PersonStanding },
-//   { name: "Phones", href: "/dashboard/owner/phones", icon: UserCog },
-//   { name: "Locations", href: "/dashboard/owner/locations", icon: UserCog },
-//   { name: "Company Links", href: "/dashboard/owner/links", icon: UserCog },
-//   { name: "Descriptions", href: "/dashboard/sections", icon: UserCog },
-//   { name: "Team", href: "/dashboard/team", icon: UserCog },
-//   { name: "Services", href: "/dashboard/service", icon: Briefcase },
-//   { name: "Projects", href: "/dashboard/projects", icon: UserCog },
-//   { name: "Parners", href: "/dashboard/partners", icon: UserCog },
-//   { name: "Who we are", href: "/dashboard/who-we-are-contents", icon: UserCog },
-//   { name: "What we do", href: "/dashboard/what-we-do-images", icon: UserCog },
-// ];
 
 export default function Sidebar() {
   const pathname = usePathname();

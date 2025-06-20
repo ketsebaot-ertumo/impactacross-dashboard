@@ -9,7 +9,6 @@ export default function EntityDetailPage() {
   const { entity, id } = useParams() as { entity: string; id: string };
 
   const { data, loading } = useSingleEntity(entity, id);
-  console.log("\n data:", data)
 
   const formattedEntity = useMemo(() => {
     return entity.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
